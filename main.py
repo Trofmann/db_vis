@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from db_data_extractor import DbDataExtractor
-from entities import DbData
+from entities import DbData, Column
 
 app = FastAPI()
 
@@ -30,6 +30,14 @@ def read_root():
 )
 def get_data() -> DbData:
     return DbDataExtractor()()
+
+
+@app.get(
+    '/get_table_columns/{table_name}',
+    response_model=list[Column]
+)
+def get_table_columns(table_name: str) -> list[Column]:
+    return DbDataExtractor()().tables[table_name].columns
 
 
 uvicorn.run(app)
