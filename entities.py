@@ -16,6 +16,9 @@ class Column(pydantic.BaseModel):
     data_type: str
     character_maximum_length: int | None
 
+    def __str__(self) -> str:
+        return f'{self.table_name}.{self.name}'
+
     @pydantic.field_validator('is_nullable', mode='before')
     @classmethod
     def parse_bool(cls, v: str) -> bool:
