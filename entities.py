@@ -17,12 +17,17 @@ class Column(pydantic.BaseModel):
     character_maximum_length: int | None
 
     def __str__(self) -> str:
-        return f'{self.table_name}.{self.name}'
+        return self.identifier()
 
     @pydantic.field_validator('is_nullable', mode='before')
     @classmethod
     def parse_bool(cls, v: str) -> bool:
         return v.lower() == 'yes'
+
+    @pydantic.computed_field
+    @property
+    def identifier(self) -> str:
+        return f'{self.table_name}.{self.name}'
 
 
 class Table(pydantic.BaseModel):
