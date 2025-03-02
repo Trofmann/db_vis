@@ -29,6 +29,7 @@ class DbDataExtractor:
                 cursor.close()
                 connection.close()
                 print("Connection closed.")
+                return self.db_data
 
     def get_tables_info(self, cursor) -> None:
         """Получение информации о таблицах"""
