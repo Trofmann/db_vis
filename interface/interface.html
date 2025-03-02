@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Schema Visualization</title>
+  <style>
+    #network {
+      width: 100%;
+      height: 800px;
+      border: 1px solid #ccc;
+    }
+  </style>
+  <!-- Подключение jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Подключение библиотеки vis.js -->
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+  <h1>Database Schema Visualization</h1>
+  <div id="network"></div>
+
+  <script>
+    $(document).ready(function () {
+      // Запрос данных с сервера
+      $.ajax({
+        url: 'http://127.0.0.1:8000/get_data', // URL сервера FastAPI
+        method: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          // Преобразование данных для vis.js
+          const nodes = [];
+          const edges = [];
+
+          // Добавляем таблицы как узлы
+          for (const tableName in data.tables) {
+            const table = data.tables[tableName];
+            const label = `
+              ${table.name}\n
+              ${table.columns.map(col => col.name).join('\n')}
+            `;
+            nodes.push({
+              id: table.name,
+              label: label,
+              shape: 'box', // Прямоугольник для таблиц
+              color: '#D2E5FF', // Цвет фона
+              margin: 10, // Отступы
+              font: {
+                size: 14, // Размер шрифта
+                multi: 'html' // Разрешаем использование HTML
+              }
+            });
+          }
+
+          // Добавляем связи как ребра
+          data.relations.forEach(relation => {
+            edges.push({
+              from: relation.source_table.name,
+              to: relation.target_table.name,
+              arrows: 'to', // Стрелка указывает на целевую таблицу
+              label: `${relation.source_column.name} → ${relation.target_column.name}`,
+              font: { align: 'middle' } // Позиция текста
+            });
+          });
+
+          // Создание сетевого графа
+          const container = document.getElementById('network');
+          const graphData = {
+            nodes: new vis.DataSet(nodes),
+            edges: new vis.DataSet(edges)
+          };
+          const options = {
+            layout: {
+              hierarchical: false // Отключение иерархического расположения
+            },
+            physics: {
+              enabled: true // Включение физики для интерактивности
+            }
+          };
+          new vis.Network(container, graphData, options);
+        },
+        error: function (error) {
+          console.error('Ошибка при получении данных:', error);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
