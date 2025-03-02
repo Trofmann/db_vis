@@ -89,7 +89,11 @@
           console.error('Ошибка при получении данных:', error);
         }
       });
+      $('#tables_field').change(function () {
+        console.log(5)
+      })
     });
+
   </script>
 <label for="tables_field">Выберите таблицу:</label>
 <select id="tables_field" name="tables_field">
