@@ -58,7 +58,7 @@ class DbDataExtractor:
         columns = cursor.fetchall()
 
         return [
-            Column(**dict(column))
+            Column(**dict(column), table_name=table.name)
             for column in columns
         ]
 

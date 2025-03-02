@@ -9,6 +9,7 @@ __all__ = [
 
 
 class Column(pydantic.BaseModel):
+    table_name: str
     name: str
     ordinal_position: int
     is_nullable: bool
