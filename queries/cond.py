@@ -10,4 +10,4 @@ class Condition(pydantic.BaseModel):
     right: Any
 
     def __str__(self):
-        return f'{self.left} {self.left} {self.right}'
+        return f'({self.left} {self.operator} {self.right})'
