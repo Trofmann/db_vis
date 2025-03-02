@@ -2,7 +2,12 @@ import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import DictCursor
 
-from entities import Table, Column, DbData, Relation
+from entities import (
+    Table,
+    Column,
+    DbData,
+    Relation,
+)
 
 # Параметры подключения к базе данных
 db_config = {
