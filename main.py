@@ -1,7 +1,8 @@
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import DictCursor
-from entities import Table, Column
+
+from entities import Table, Column, DbData, Relation
 
 # Параметры подключения к базе данных
 db_config = {
@@ -13,13 +14,27 @@ db_config = {
 }
 
 
-# Функция для получения информации о таблицах
-def get_tables_info() -> dict[str, Table] | None:
-    """Получение информации о таблицах"""
-    try:
-        # Подключение к базе данных
-        connection = psycopg2.connect(**db_config)
-        cursor = connection.cursor(cursor_factory=DictCursor)
+class DbDataExtractor:
+    def __init__(self):
+        self.db_data = DbData()
+
+    def __call__(self):
+        try:
+            connection = psycopg2.connect(**db_config)
+            cursor = connection.cursor(cursor_factory=DictCursor)
+            self.get_tables_info(cursor)
+            self.get_foreign_keys_info(cursor)
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            # Закрытие соединения
+            if connection:
+                cursor.close()
+                connection.close()
+                print("Connection closed.")
+
+    def get_tables_info(self, cursor) -> None:
+        """Получение информации о таблицах"""
 
         # Получение списка всех таблиц
         cursor.execute("""
@@ -29,47 +44,29 @@ def get_tables_info() -> dict[str, Table] | None:
         """)
         tables = cursor.fetchall()
 
-        parsed_tables: dict[str, Table] = dict()
-
         # Для каждой таблицы получаем информацию о столбцах
         for table in tables:
             parsed_table = Table(**dict(table))
-            parsed_tables[parsed_table.name] = parsed_table
+            parsed_table.columns.extend(self.get_table_columns_data(cursor, parsed_table))
+            self.db_data.add_table(parsed_table)
 
-            parsed_table.columns.extend(get_table_columns_data(cursor, parsed_table))
+    def get_table_columns_data(self, cursor, table: Table) -> list[Column]:
+        """Получение информации о столбцах таблицы"""
+        cursor.execute(sql.SQL("""
+            SELECT column_name as name, ordinal_position, is_nullable, data_type, character_maximum_length
+            FROM information_schema.columns
+            WHERE table_name = %s;
+        """), [table.name])
+        columns = cursor.fetchall()
 
+        return [
+            Column(**dict(column))
+            for column in columns
+        ]
 
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        # Закрытие соединения
-        if connection:
-            cursor.close()
-            connection.close()
-            print("Connection closed.")
-            return parsed_tables
-
-
-def get_table_columns_data(cursor, table: Table) -> list[Column]:
-    """Получение информации о столбцах таблицы"""
-    cursor.execute(sql.SQL("""
-        SELECT column_name as name, ordinal_position, is_nullable, data_type, character_maximum_length
-        FROM information_schema.columns
-        WHERE table_name = %s;
-    """), [table.name])
-    columns = cursor.fetchall()
-
-    return [
-        Column(**dict(column))
-        for column in columns
-    ]
-
-
-def get_foreign_keys_info():
-    try:
+    def get_foreign_keys_info(self, cursor) -> None:
+        """Получение информации о внешних ключах"""
         # Подключение к базе данных
-        connection = psycopg2.connect(**db_config)
-        cursor = connection.cursor()
 
         # Получение информации о внешних ключах
         cursor.execute("""
@@ -95,22 +92,26 @@ def get_foreign_keys_info():
 
         # Вывод информации о внешних ключах
         for fk in foreign_keys:
-            source_table, source_column, target_table, target_column, fk_name = fk
-            print(
-                f"Foreign Key: {fk_name}\n"
-                f"  Source Table: {source_table}, Column: {source_column}\n"
-                f"  Target Table: {target_table}, Column: {target_column}\n"
+            fk_dict = dict(fk)
+            source_table = self.db_data.tables[fk_dict['source_table']]
+
+            source_column = source_table.get_column_by_name(fk_dict['source_column'])
+            if source_column is None:
+                raise Exception('Не найдена колонка')
+
+            target_table = self.db_data.tables[fk_dict['target_table']]
+            target_column = target_table.get_column_by_name(fk_dict['target_column'])
+            if target_column is None:
+                raise Exception('Не найдена колонка')
+
+            self.db_data.relations.append(
+                Relation(
+                    source_table=source_table,
+                    source_column=source_column,
+                    target_table=target_table,
+                    target_column=target_column
+                )
             )
 
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        # Закрытие соединения
-        if connection:
-            cursor.close()
-            connection.close()
-            print("Connection closed.")
 
-
-# Вызов функции
-get_tables_info()
+DbDataExtractor()()
