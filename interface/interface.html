@@ -78,6 +78,12 @@
             }
           };
           new vis.Network(container, graphData, options);
+
+
+          for (const tableName in data.tables){
+            let option = '<option value='+tableName+'>' + tableName + '</option>'
+            $("#tables_field").append(option);
+          }
         },
         error: function (error) {
           console.error('Ошибка при получении данных:', error);
@@ -85,5 +91,8 @@
       });
     });
   </script>
+<label for="tables_field">Выберите таблицу:</label>
+<select id="tables_field" name="tables_field">
+</select>
 </body>
 </html>
