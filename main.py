@@ -13,12 +13,9 @@ db_config = {
 }
 
 
-def get_table_columns_data(table: Table):
-    ...
-
-
 # Функция для получения информации о таблицах
-def get_tables_info():
+def get_tables_info() -> dict[str, Table] | None:
+    """Получение информации о таблицах"""
     try:
         # Подключение к базе данных
         connection = psycopg2.connect(**db_config)
@@ -32,25 +29,15 @@ def get_tables_info():
         """)
         tables = cursor.fetchall()
 
-        parsed_tables = []
+        parsed_tables: dict[str, Table] = dict()
 
         # Для каждой таблицы получаем информацию о столбцах
         for table in tables:
             parsed_table = Table(**dict(table))
-            parsed_tables.append(parsed_table)
+            parsed_tables[parsed_table.name] = parsed_table
 
-            # Получение информации о столбцах таблицы
-            cursor.execute(sql.SQL("""
-                SELECT column_name as name, ordinal_position, is_nullable, data_type, character_maximum_length
-                FROM information_schema.columns
-                WHERE table_name = %s;
-            """), [parsed_table.name])
-            columns = cursor.fetchall()
+            parsed_table.columns.extend(get_table_columns_data(cursor, parsed_table))
 
-            parsed_table.columns.extend([
-                Column(**dict(column))
-                for column in columns
-            ])
 
     except Exception as e:
         print(f"Error: {e}")
@@ -60,6 +47,22 @@ def get_tables_info():
             cursor.close()
             connection.close()
             print("Connection closed.")
+            return parsed_tables
+
+
+def get_table_columns_data(cursor, table: Table) -> list[Column]:
+    """Получение информации о столбцах таблицы"""
+    cursor.execute(sql.SQL("""
+        SELECT column_name as name, ordinal_position, is_nullable, data_type, character_maximum_length
+        FROM information_schema.columns
+        WHERE table_name = %s;
+    """), [table.name])
+    columns = cursor.fetchall()
+
+    return [
+        Column(**dict(column))
+        for column in columns
+    ]
 
 
 def get_foreign_keys_info():
